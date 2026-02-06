@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Mini FPS 3D</title>
+<style>
+    body { margin: 0; overflow: hidden; }
+    #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 10px;
+        height: 10px;
+        margin-left: -5px;
+        margin-top: -5px;
+        border: 2px solid white;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+</style>
+</head>
+<body>
+<div id="crosshair"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+
+<script>
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x202020);
+
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Lumière
+let light = new THREE.HemisphereLight(0xffffff, 0x444444);
+scene.add(light);
+
+// Sol
+let floorGeometry = new THREE.PlaneGeometry(100, 100);
+let floorMaterial = new THREE.MeshStandardMaterial({ color: 0x555555 });
+let floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+// Cubes ennemis
+let enemies = [];
+for(let i = 0; i < 10; i++) {
+    let geo = new THREE.BoxGeometry(1,1,1);
+    let mat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    let cube = new THREE.Mesh(geo, mat);
+    cube.position.set(
+        (Math.random() - 0.5) * 40,
+        0.5,
+        (Math.random() - 0.5) * 40
+    );
+    scene.add(cube);
+    enemies.push(cube);
+}
+
+// Contrôles FPS
+let controls = new THREE.PointerLockControls(camera, document.body);
+
+document.addEventListener("click", () => {
+    controls.lock();
+});
+
+scene.add(controls.getObject());
+
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+
+document.addEventListener("keydown", (event) => {
+    switch(event.code) {
+        case "KeyW": moveForward = true; break;
+        case "KeyS": moveBackward = true; break;
+        case "KeyA": moveLeft = true; break;
+        case "KeyD": moveRight = true; break;
+    }
+});
+
+document.addEventListener("keyup", (event) => {
+    switch(event.code) {
+        case "KeyW": moveForward = false; break;
+        case "KeyS": moveBackward = false; break;
+        case "KeyA": moveLeft = false; break;
+        case "KeyD": moveRight = false; break;
+    }
+});
+
+// Tir
+let raycaster = new THREE.Raycaster();
+
+document.addEventListener("mousedown", () => {
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    let intersects = raycaster.intersectObjects(enemies);
+
+    if(intersects.length > 0) {
+        let hit = intersects[0].object;
+        scene.remove(hit);
+        enemies = enemies.filter(e => e !== hit);
+    }
+});
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize();
+
+    if(moveForward || moveBackward) velocity.z = direction.z * 0.1;
+    else velocity.z = 0;
+
+    if(moveLeft || moveRight) velocity.x = direction.x * 0.1;
+    else velocity.x = 0;
+
+    controls.moveRight(velocity.x);
+    controls.moveForward(velocity.z);
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
